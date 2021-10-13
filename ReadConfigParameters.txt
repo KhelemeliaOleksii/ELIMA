@@ -1,0 +1,51 @@
+There are instructions to configure the project in this file.
+
+#Configure MPI libruary
+
+1. Add MPI include directories
+	Project->properties->VisualC++ Directories->Include Directories->
+	add c:\Program Files\mpich\include\
+
+2. Add MPI libruary directories
+	Project->properties->VisualC++ Directories->Libruary Directories->
+	add c:\Program Files\mpich\lib\
+
+3. add PATH to mpi.lib
+	Project->properties->linker->link->Additional Directories 
+	add mpi.lib
+4. No incremental features
+	Project->properties->linker->general->Enable Incremaental Linker
+	chose NO (/INCREMENTAL:NO)
+
+#Configure GSL libruary
+
+1. Add GSL executable directories
+	Project->properties->VC++ directories-> Executable Directories->
+
+add 	C:\Program Files x86\GnuWin32\src\gsl\1.8\gsl-1.8\VC8\libgslcblas\Debug-DLL
+	C:\Program Files x86\GnuWin32\src\gsl\1.8\gsl-1.8\VC8\libgsl\Debug-DLL
+
+2. Add GSL Include directories
+
+	Project->properties->VC++ directories-> Include Directories->
+	
+add 	C:\Program Files %28x86%29\GnuWin32\src\gsl\1.8\gsl-1.8
+
+3. Add GSL Libruary directories
+
+add 	C:\Program Files %28x86%29\GnuWin32\src\gsl\1.8\gsl-1.8\VC8\libgslcblas\Debug-DLL
+	C:\Program Files %28x86%29\GnuWin32\src\gsl\1.8\gsl-1.8\VC8\libgsl\Debug-DLL
+
+4. Configure Preprocessor Definitions
+	Project->properties->C/C++-> Preprocessor-> Preprocessor Definitions
+
+add 	GSL_DLL
+
+5. Configure Additional Dependencies
+	Project-> properties -> Linker-> Input -> Additional Dependencies
+
+add 	libgsl_dll_d.lib
+	libgslcblas_dll_d.lib
+
+Work with pleasure!
+	 
