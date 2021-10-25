@@ -272,11 +272,11 @@ double ELIA(double gx, double gy, double gz, double* parmtr){
 
 double ELiMA(double gx, double gy, double gz, double* parmtr){
 		// it needs to obtaine this parameter for all new jobs 
-	double h = 1e5;	// parameter of magnetic field
+	double h = 1000;	// parameter of magnetic field
 	
 	// a difference between Landau levels
 	double s ; 
-	double N = 15;
+	double N = 10;
 
 	// components of the union velocity vector V = V_i/V_0
 	double Sx = parmtr[0]; 
@@ -318,6 +318,7 @@ double ELiMA(double gx, double gy, double gz, double* parmtr){
 	double ScaledBesselI_0, ScaledBesselI_1;
 	double ScaledBesselInApprox;
 	double ScaledBessel2 = 0, ScaledBessel1=0;
+	double tmpRe0, tmpIm0; 
 	////////////////////////////////////////
 	// General position
 	g = sqrt(gx*gx + gy*gy + gz*gz);		// a dimless wave vector	
@@ -332,8 +333,9 @@ double ELiMA(double gx, double gy, double gz, double* parmtr){
 	if ((gz == 0) || ((gx == 0) && (gy == 0) && (gz == 0))) {  // to exclude numerical divergence
 		return 0;
 	} else {
+		//PreSusc = 1/4.*sqrt(Pi)/sqrt(2*tau_par);  //a prefix of susceptibility. It's no variables of integration
 		PreSusc = 1/4./Delta*sqrt(Pi)/sqrt(2*tau_par);  //a prefix of susceptibility. It's no variables of integration
-		PreInt = PreSusc/Pi/Pi;	
+		PreInt = PreSusc/Pi/Pi*Delta;	
 
 		Xi1 = (W +  Delta*gz*gz)/sqrt(2*tau_par)/gz; // variable 1 of exponenta;
 		Xi2 = (W -  Delta*gz*gz)/sqrt(2*tau_par)/gz; // variable 2 of exponenta;
@@ -353,6 +355,7 @@ double ELiMA(double gx, double gy, double gz, double* parmtr){
 		//preScaledBess = exp(-a2*(1.-exp(-beta/2.))/(1.+exp(-beta/2.)));	
 		preScaledBess	= exp(-a2*(1.-exp_beta2)/(1.+ exp_beta2));	
 
+		//Scaled modified bessel function exp(-|x|)*BesselI(n, x)
 		ScaledBesselI_0 = gsl_sf_bessel_I0_scaled(argBess);
 		ScaledBesselI_1 = gsl_sf_bessel_I1_scaled(argBess);
 		
@@ -375,7 +378,8 @@ double ELiMA(double gx, double gy, double gz, double* parmtr){
 			} 
 			else{// if (s == 2) {
 				if (fabs(argBess)  > 1e-16) {
-					ScaledBesselInApprox = 	ScaledBessel2 -2*(s-1)/(argBess)*ScaledBessel1;
+					ScaledBesselInApprox = 	gsl_sf_bessel_In_scaled(s, argBess);
+					//ScaledBesselInApprox = 	ScaledBessel2 -2*(s-1)/(argBess)*ScaledBessel1;
 				} else {
 					ScaledBesselInApprox = 0;
 				}	
@@ -437,19 +441,19 @@ double ELiMA(double gx, double gy, double gz, double* parmtr){
 			}*/
 			RS = preScaledBess * ScaledBesselInApprox;
 
-			if ( s==0 ) {
-				ImMagnetPart += - RS *
+/*			if ( s==0 ) {
+				ImMagnetPart += -RS *
 					(exp(-theta1Hm*theta1Hm)  - exp(-theta2Hp*theta2Hp));
 
 				ReMagnetPart += RS * 
 					(DispertionFunctionApproximation(theta1Hm) -
 						DispertionFunctionApproximation(theta2Hp));
 				if (fabs(W) <= 1e-16) {
-					ImMagnetPartTilde +=  (tau/tau_par) * RS * exp(-theta2Hp*theta2Hp);
+					ImMagnetPartTilde +=  -(tau/tau_par) * RS * exp(-theta2Hp*theta2Hp);
 				} else {
 					ImMagnetPartTilde = ImMagnetPart;
 				}
-			} else {
+			} else*/ {
 				//ImMagnetPart += - RS *
 				//		(exp(-s*beta/2.)*(exp(-theta1Hm*theta1Hm)  - exp(-theta2Hp*theta2Hp)) +
 				//		exp(s*beta/2.)*(exp(-theta1Hp*theta1Hp)  - exp(-theta2Hm*theta2Hm)));
@@ -458,7 +462,7 @@ double ELiMA(double gx, double gy, double gz, double* parmtr){
 				//				DispertionFunctionApproximation(theta2Hp)) +
 				//	exp(s*beta/2)*(DispertionFunctionApproximation(theta1Hp)-
 				//				DispertionFunctionApproximation(theta2Hm)));
-				ImMagnetPart += - RS * exp(s*beta/2.)*
+				ImMagnetPart += -RS * exp(s*beta/2.)*
 						(exp(-s*beta)*(exp(-theta1Hm*theta1Hm)  - exp(-theta2Hp*theta2Hp)) +
 						(exp(-theta1Hp*theta1Hp)  - exp(-theta2Hm*theta2Hm)));
 				ReMagnetPart += RS * exp(s*beta/2)*
@@ -466,24 +470,31 @@ double ELiMA(double gx, double gy, double gz, double* parmtr){
 								DispertionFunctionApproximation(theta2Hp)) +
 					(DispertionFunctionApproximation(theta1Hp)-
 								DispertionFunctionApproximation(theta2Hm)));
-				if (fabs(W) <= 1e-16) {
+				/*if (fabs(W) <= 1e-16) {
 					ImMagnetPartTilde +=  (tau/tau_par)* RS *(
 						exp(-s*beta/2.)*exp(-theta2Hm*theta2Hm)*(1+s*h/gz/gz/Delta) +
 						exp(s*beta/2.)*exp(-theta2Hp*theta2Hp)*(1-s*h/gz/gz/Delta));
-				} else {
+				} else*/ /*{
 					ImMagnetPartTilde = ImMagnetPart;
+				}*/
+				if (s == 0) {
+					tmpIm0=ImMagnetPart;
+					tmpRe0=ReMagnetPart;
 				}
 			}
 
 		}
-		if (fabs(W) <= 1e-16) {
+		/*if (fabs(W) <= 1e-16) {
 			TemperatureFactor = 1.;
-		} else{
+		} else*/{
 			TemperatureFactor = 1/(1.-exp(-2.*Delta*W/tau));
 		}
 		//////////////////////////////////////////
 		//to get the PostInt part
 		// An imaginary part of susceptibility is
+		ImMagnetPart=ImMagnetPart-tmpIm0/2;
+		ReMagnetPart=ReMagnetPart-tmpRe0/2;
+
 		ImKappa = PreSusc*ImMagnetPart/g/g/gz;
 		
 		// an real part of susceptibility is
@@ -493,6 +504,8 @@ double ELiMA(double gx, double gy, double gz, double* parmtr){
 		
 		//return PreInt*ImMagnetPartTilde; 
 		//return PreInt*W/(g*g*g*g*gz)*TemperatureFactor*PostInt; 
-		return PreInt*ImMagnetPartTilde*W/(g*g*g*g*gz)*TemperatureFactor*PostInt; 
+		//return ImMagnetPartTilde*W/(g*g*g*g*gz)*TemperatureFactor*PostInt; 
+		return PreInt*ImMagnetPart*W/(g*g*g*g*gz)*TemperatureFactor*PostInt; 
+		//return PreInt*W*Up*PostInt/(g*g*g*g)/(ge); 
 	}
 }

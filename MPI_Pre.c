@@ -158,12 +158,6 @@ void PreIntegration (int rank, int size, int series, double *set_parmtrs, double
 	bounds[4] = LOWZ;
 	bounds[5] = UPZ;
 
-	//if (rank == 0) {
-	//	for(i = 0; i < 6; i++) {
-	//	fprintf(stdout, "bound %d = %g\n", i, bounds[i]); fflush(stdout);
-	//	}
-	//}
-	fprintf(stdout, "a"); fflush(stdout);
 	/////////////////////////////////////////////////////////////
 	Integration(ELiMA, series, set_parmtrs, rank, size, count, list, &subSumm, &tempstep, bounds);
 	//Integration(ELIA, series, set_parmtrs, rank, size, count, list, &subSumm, &tempstep, bounds);

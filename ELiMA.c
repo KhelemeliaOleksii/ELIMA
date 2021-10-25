@@ -1,26 +1,35 @@
 //////////////////////////////////////////////////////////////////////
-// Изменения вносимые в связи с расчетом по Пархомчуку
-// 1) function.c: double delta (TePerp) поменять коєфициент для расчетов параметров HESR
-///////////////////////////////////
-/// Программа MPI_Larkin27 предазначена для подсчета										//
-/// интегрального уравнения ф.27 из работы Ларкина											//
-/// А.И. Ларкин. Прохождение частиц через плазму ЖЭТФ, 37(1), 264-272 (1959)				//
-/// [A.I. Larkin, Passage of particles through plasma, Sov. Phys. JETP 10, 186-191 (1960)]	//
-//////////////////////////////////////////////////////////////////////////////////////////////
-/// Интегральное уравнение представляет собой двумерный интеграл
-///////////////////////////////////////////////////////////////////
-/// athor: O.V.Khelemelia
-/// data: 21.06.2014
-///////////////////////////////////////////////////////////////////
-/// Для подключения "mpi.h" необходимо провести следующие манипуляции:
-/// 1) project->properties->VC++ Directories: in Include Derictories add adress to mpich2/include
-/// 2) project->properties->VC++ Directories: in Library Derictories add adress to mpich2/lib
-/// 3) project->properties->linker->input: in Additional Dependencies add mpi.h
+// A program to calculate energy losses integrall by Simpson`s method 
+// with a Double Exponent Transformation of 
+// the integration area algorithm
+//////////////////////////////////////////////////////////////////////
+
+// ELI - Energy Losses of Ion in uniform electron gas
+// ELIA - Energy Losses of Ion in electron gas 
+			// with Anisotorpic velocity distribution
+// ELIMA - Energy Losses of ion in Magnetized electron gas
+			// with Anisotorpic velocity distribution
+
+// Configuration parametrs of the Microsoft Visual Studio project
+// are written on ReadConfigParameters.txt file
+
+// -- Main file: ELiMA.c
+// -- Parameters (COUNTPARMTRS) to the program are imported from file:
+		//"C:\\Program Files (x86)\\MPICH2\\bin\\data.dat"
+// -- integration procedure start by PreIntegration() function;
+// -- result is written to OUTResult_file with compiled name:
+		//PROG_NAME+PROG_VERSION+
+		//+MAGNETFIELDPar+MAGNETFIELDPar+
+		//+TEMPERATURAPer+Value_TEMPERATURAPer+
+		//+TEMPERATURAPar+Value_TEMPERATURAPar+FILE_FORMAT
+// precision of calculation: InputData.h
+// boundaries of calculation: Boundaries.h
+
+// Massage Passing Interface (mpi.h) is used for parallel calculation
 
 #include "MPIIntegration.h"
 #include "Boundaries.h"
 #include "PlotFunction.h"
-//#include "InputData.h"
 #include "Function.h"
 #include "readNline.h"
 #include <stdio.h>
@@ -30,121 +39,111 @@
 #include <time.h>
 #include <direct.h> 
 
-// количество параметров задачи
-#define COUNTPARMTRS 6	// (3-компонента скорости)
-					// абсолютное значение скорости
+#define COUNTPARMTRS 6	// define number of import parameters
+	// 3 - union velocity vector: v_x, v_y, v_z
+	// absolute velocity value: V
+	// 2 - electron temperature: T_perp, T_parallel
+	// longitudinal magnetic field: h
 
-					// ((2)поперечная и продольная температурі)
-// Название программы
-#define PROG_NAME "ELiMA"
-// Версия программы
-#define PROG_VERSION ".v.5.05"
-// Формат вывода данных
+#define PROG_NAME "ELiMA" //names of program:
+	// ELI
+	// ELIA
+	// ELiMA
+#define PROG_VERSION ".v.6.01"
 #define FILE_FORMAT ".dat"
-// Внешний параметр
-// Поперечная температура
-#define TEMPERATURAPer "_AnIso(Par)h10(5)_TePer"
-// Продоьлная температура
+#define TEMPERATURAPer "TePer"
 #define TEMPERATURAPar "TePar"
-// Путь к файлу
 #define FILEPATH "C:\\Program Files (x86)\\MPICH2\\bin\\"
+
 int main (int argc, char **argv) {
 	// log-file
 	FILE *LOGfile;
 
-	int MPIErrorCode = 1;
 	int rank, size;
 	int flagMPI_Init ;
 	int i;
 	double worktime;
 	
-	MPI_Comm MPI_COMM_External;
+	MPI_Comm MPI_COMM_External; // duplicate of mpi-comm-world
 
-	// Создание лог-файла запуска программы
-
-	MPI_Init(&argc, &argv); // MPI initialization
-	MPI_Initialized (&flagMPI_Init); // test MPI initialization
-	
-	//fprintf(stdout, "Hi\n");fflush(stdout);
+	MPI_Init(&argc, &argv);	// MPI initialization
+	// test MPI initialization
+	MPI_Initialized (&flagMPI_Init); 
 	if (!flagMPI_Init) {
-		// определение начала работы программы
-		time_t tt;
-		struct tm * ptm;
-		char buf[BUFSIZ];
+		//create log.dat file
 		if ((fopen_s(&LOGfile ,"C:\\Program Files (x86)\\MPICH2\\bin\\log.dat", "w"))) { // TRUE is equal "File was not opened"
-			fprintf(stdout, "Can't open log-file\n");fflush(stdout);
+			fprintf(stdout, "ERROR: Can't open log-file\n");fflush(stdout);
 			exit(1);
+		} else {
+			time_t tt;
+			struct tm * ptm;
+			char buf[BUFSIZ];
+ 			ptm = (struct tm*)malloc(sizeof(struct tm));
+			tt = time(NULL);
+			localtime_s(ptm, &tt);
+			strftime(buf, BUFSIZ, "%d-%m-%Y\nSTART \n", ptm);
+			fprintf(LOGfile, buf); fflush(LOGfile);
+			free(ptm);
 		}
-		ptm = (struct tm*)malloc(sizeof(struct tm));
-		tt = time(NULL);
-		localtime_s(ptm, &tt);
-		strftime(buf, BUFSIZ, "%d-%m-%Y\nSTART \n", ptm);
-		fprintf(LOGfile, buf); fflush(LOGfile);
-
-		// программа начала работу не в параллельном режиме
-		// !!! завершить работу !!!
 		fprintf(LOGfile, "\\------------------------------\\ \n");fflush(stdout);
 		fprintf(LOGfile, "MPI was not initiated.\nProgram MPI_Larkin stoped.");fflush(stdout);
-		free(ptm);
 		exit(1);
 	}
 
-
-	//definition of number of work processors
+	//define of number of work processors
 	MPI_Comm_size(MPI_COMM_WORLD, &size); 
-	//definition of inbexes of work processors
-	MPI_Comm_rank(MPI_COMM_WORLD, &rank); // index number of processor
+	//define of indexes of work processors
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank); 
 
-	// Создание нового MPI комуникатора
+	// create a duplicate of MPI_COMM environment
 	MPI_Comm_dup(MPI_COMM_WORLD, &MPI_COMM_External);
-	if (rank == 0) {
-	/// Определение время начала работы программы
-	/// дата записывается в log.dat в формате
-	/// Day-Month-Year Hour(00-23):Minute(00-59):Second(00-61)
-		time_t tt;
-		struct tm * ptm;
-		char buf[BUFSIZ];
-		ptm = (struct tm*)malloc(sizeof(struct tm));
-		tt = time(NULL);
-		localtime_s(ptm, &tt);
-		strftime(buf, BUFSIZ, "%d-%m-%Y %H:%M:%S\nSTART \n", ptm);
 	
-	/// Создание log-файла
+	// create(open) log.dat file
+
+	fprintf(stdout, "a");fflush(stdout);
+
+	if (rank == 0) {
 		if ( (fopen_s(&LOGfile ,"C:\\Program Files (x86)\\MPICH2\\bin\\log.dat", "w")) ) { // TRUE is equal "File was not opened"
 			int MPIerrorCode = 1; // File was not opened
 			fprintf(stdout, "Can't open log-file\n");fflush(stdout);
 			MPI_Abort(MPI_COMM_WORLD, MPIerrorCode);
+		} else {
+			// start time of calculation is written
+			time_t tt;
+			struct tm * ptm;
+			char buf[BUFSIZ];
+			ptm = (struct tm*)malloc(sizeof(struct tm));
+			tt = time(NULL);
+			localtime_s(ptm, &tt);
+			strftime(buf, BUFSIZ, "%d-%m-%Y %H:%M:%S\nSTART \n", ptm);
+
+			fprintf(LOGfile, buf); fflush(LOGfile);
+			free(ptm);
 		}
-		fprintf(LOGfile, buf); fflush(LOGfile);
-		free(ptm);
 	}
 
-	// Программа работает только для более чем одного процессора
+	// Number of processes have to be more than 1
 	if (rank == 0) {
 		if(size <= 1) {
+			int MPIErrorCode = 1;
 			fprintf(stdout, "Number of processes have to be more than 1\n");fflush(stdout);
 			fprintf(LOGfile, "Program was stoped. Number of processes have to be more than 1\n");fflush(LOGfile);
 			MPI_Abort(MPI_COMM_WORLD, MPIErrorCode);
 		}
 	}
-
-	////////////////////////////
-	// Главная часть программы//
-	////////////////////////////
-	for (i = 2; i < 3/*выход при отсутствии параметров*/; i++) {	
-		// i - порядковый номер линии с которой нужно начинать считывать даные с файла
+	for (i = 2; i < 3; i++) { //to create and use local variable
 		double *sndrecvset;
 		double *set_parmtrs;
-		double result = 0.;		// конечный ответ
-		int series = 1;			// порядковый номер запуска программы
+		double result = 0.;		// result of calculation
+		int series = 1;			// it`s artefact.
 		double nz=0.;
 		int position = 0, length; 
 
-		// необходимые определение для созданиянового mpi-типа
-		MPI_Datatype sndrcvparmtrs; // имя нового типа
-		MPI_Datatype oldtypes[COUNTPARMTRS+1];	// массив под старые типы
-		MPI_Aint offsets[COUNTPARMTRS+1];		// массив под растояния между элементами нового типа
-		int blklens[COUNTPARMTRS+1];				// массив под количество старых типов
+		// create new mpi variable to send-recieve procedure
+		MPI_Datatype sndrcvparmtrs; // name of new mpi variable
+		MPI_Datatype oldtypes[COUNTPARMTRS+1];	// array of old mpi variables
+		MPI_Aint offsets[COUNTPARMTRS+1];		// array of distance from start for old mpi variables
+		int blklens[COUNTPARMTRS+1];				// length of old mpi variables
 
 		// выделение памяти под массив параметров для пересілки
 		length = (COUNTPARMTRS+3)*sizeof(double)+sizeof(int); //основніе параметрі(count) и обезразмеренніе (3)
@@ -244,18 +243,6 @@ int main (int argc, char **argv) {
 				for (k = 1; k < size; k++) {
 						MPI_Send(sndrecvset, COUNTPARMTRS, MPI_DOUBLE, k, 111, MPI_COMM_External);
 				}
-				//
-				//for(i = 0; i < COUNTPARMTRS; i++) {
-				//	sndrecvset[i] = 0.;
-				//}
-				// Распаковка полученного сообщения (сигнал о завершении работы)
-				//position = 0;
-				//MPI_Unpack(set_parmtrs, length, &position, &m, 1, MPI_INT, MPI_COMM_External);
-				//MPI_Unpack(set_parmtrs, length, &position, sndrecvset, COUNTPARMTRS, MPI_DOUBLE, MPI_COMM_External);
-				//for(i = 0; i < COUNTPARMTRS; i++) {
-				//	fprintf(stdout, "proc %d par[%d] = %g\n", 
-				//			rank,  i, sndrecvset[i]);
-				//}
 			}
 			free(par);
 		}
@@ -273,18 +260,9 @@ int main (int argc, char **argv) {
 				break;
 			}
 			else {
-//				fprintf(stdout, "position is %d\n", position);fflush(stdout);
-				//распаковка полученного сообщения (список параметров)
-				//MPI_Unpack(set_parmtrs, length, &position, sndrecvset, 1, sndrcvparmtrs, MPI_COMM_External);
 				MPI_Recv(sndrecvset, COUNTPARMTRS, MPI_DOUBLE, 0, 111, MPI_COMM_External, &status);
 			}
 		}
-//		fprintf(stdout, "sizeofFloat = %d, sizeofInt = %d, sizeofDouble =%d\n", sizeof(float), sizeof(int), sizeof(double));
-		//for(i = 0; i < COUNTPARMTRS; i++) {
-		//	fprintf(stdout, "proc %d par[%d] = %g\n", 
-		//			rank,  i, sndrecvset[i]);
-		//}
-		//fprintf(stdout, "proc %d par[0] = %g, par[1] = %g\n", rank,  par[0], par[1]);
 
 		set_parmtrs[0] = sndrecvset[0];	// Vx
 		set_parmtrs[1] = sndrecvset[1];	// Vy
@@ -295,22 +273,7 @@ int main (int argc, char **argv) {
 		set_parmtrs[6] = delta(sndrecvset[4]);	// Delta
 		set_parmtrs[7] = tau_perpendicular();	
 		set_parmtrs[8] = tau_parallel(sndrecvset[5], sndrecvset[4]);
-		
-	
-		//for(i = 0; i < 9; i++) {
-		//	fprintf(stdout, "proc %d par[%d] = %g\n", 
-		//			rank,  i, set_parmtrs[i]);
-		//}
-			////////////////////////////////////////////////////////////////
-		//if (rank == 0) {
-		//	double valueoffunction = 0;
-		//	char *functionviewfile = "functionview";
-		//	char *errormsg;
-		//	if (printFunction1Dx(&valueoffunction, ELI, 0., 100000, 10000, 0, set_parmtrs, functionviewfile, &errormsg)) {
-		//		fprintf(stdout, "ERORR");
-		//	}
-		//}
-		//fprintf(stdout, "delta = %e\n", delta(sndrecvset[4]));
+
 		fprintf(stdout, "Proc %d start next task\n", rank); fflush(stdout);
 		//////////////////////////////////////////////////////////////////
 		// Вызов функции интегрирования
@@ -361,14 +324,6 @@ int main (int argc, char **argv) {
 						set_parmtrs[3]*temperature_coeficient*sqrt(set_parmtrs[4]), set_parmtrs[4], set_parmtrs[5], 
 						result, result/(temperature_coeficient*sqrt(set_parmtrs[4])), PRECISION, size, worktime, PROG_NAME, PROG_VERSION, 
 						LOWX, UPX, LOWY, UPY, LOWZ, UPZ);fflush(OUTResult);
-					
-			//fprintf(OUTResult, "%g\n", result);fflush(OUTResult);
-			//fprintf(OUTResult, "Vi/V0=%g\tTe=%g\tDelta=%g\tTau=%g\n", 
-			//			set_parmtrs[0], set_parmtrs[1], set_parmtrs[2], set_parmtrs[3]);fflush(OUTResult);
-			////fprintf(OUTResult, "Boundaries: \n phi_ = %e \t phi^ = %e\n", LOWZ, UPZ);fflush(OUTResult);
-			//fprintf(OUTResult, "x_ = %e \t x^ = %e\n", LOWX, UPX);fflush(OUTResult);
-			//fprintf(OUTResult, "k_ = %e \t k^ = %e\n", LOWY, UPY);fflush(OUTResult);
-			//fprintf(OUTResult, "accuracy %e \n", PRECISION);fflush(OUTResult);
 			if(OUTResult) {
 				if(fclose(OUTResult)) {
 					fprintf(LOGfile, "\\---------------------------------\\ \n");fflush(stdout);
